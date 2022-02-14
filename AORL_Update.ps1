@@ -104,11 +104,17 @@ Set-Variable -Name AdminUser -Value (Get-ADUser -Credential $SvcAcctCreds -Serve
 #>
 $FSCredentials = Get-Credential -Credential ($AdminUser + "@" + $FSDomain)
 if ($FSCredentials) {
+    <#
+        This potion of the script will create a temporary folder for placing the data that is being 
+    transferred from the file server to the web servers.
+    #>
     Set-Variable -Name LocalTempPath -Value ("E:\Temp\" + $FSShare)
     if (!(Test-Path -Path $LocalTempPath)) {
+        Write-Host ("Creating temporary folder: [" + $LocalTempPath + "].")
         New-Item -Path $LocalTempPath -ItemType Directory | Out-Null
     }
     else {
+        Write-Host ("Emptied temporary folder: [" + $LocalTempPath + "].")
         Remove-Item -Path ($LocalTempPath + "\*") -Recurse -Force | Out-Null
     }
     $FolderName = Test-Date $RevisionDate.Replace("-","/")
@@ -116,9 +122,11 @@ if ($FSCredentials) {
         $FolderYear = RightString $FolderName 4
         $FSFullPath = ("Policy and Procedures\" + $FolderYear + "\" + $FolderName)
         try {
+            Write-Host ("Connection to file server: [" + $FSSrcShare + "] using credentials: [" + $FSCredentials + "].")
             $PSDrvName = (New-PSDrive -Name "RemoteFS" -PSProvider "FileSystem" -Root $FSSrcShare -Credential $FSCredentials)
             $FilePath = ($PSDrvName.Name + ":\" + $FSFullPath + "\*.zip")
             if (Test-Path -Path $FilePath) {
+                Write-Host ("Copying zip files [" + $FilePath + "] to temporary folder: [" + $LocalTempPath + "].")
                 Copy-Item -Path $FilePath -Destination $LocalTempPath
             }
             else {
@@ -130,14 +138,19 @@ if ($FSCredentials) {
             $Error.Clear()
         }
         finally {
+            Write-Host ("Disconnected from file server: [" + $FSSrcShare + "].")
             Remove-PSDrive -Name "RemoteFS"
         }
         Set-Variable -Name ContentList -Value @("1gwebhelp","webhelp")
         foreach ($ZipFileName in $ContentList) {
             $LocalZipFile = ($LocalTempPath + "\" + $ZipFileName)
+            Write-Host ("Expanding: [" + $LocalZipFile + "] to temporary folder.")
             Expand-Archive -Path ($LocalZipFile + ".zip") -DestinationPath $LocalZipFile -ErrorAction $EAPreference
             Remove-Item -Path ($LocalZipFile + ".zip") -Force -Verbose
         }
+        <#
+            This potion of the script will construct a list of web servers for the environment being processed.
+        #>
         switch ($Environment) {
             "UAT" {
                 $eCode = "U"; Break
@@ -155,11 +168,15 @@ if ($FSCredentials) {
             $DestSrvList+=(Get-Variable -Name "DestServer$($i)").Value
             Remove-Variable -Name "DestServer$($i)"
         }
+        <#
+            This potion of the script will process the destination server list.
+        #>
         foreach ($WebServer in $DestSrvList) {
             $i = RightString $WebServer 1
             Set-Variable -Name ContentList -Value @("1gwebhelp","webhelp")
             $WebSvrShare = ("\\" + $WebServer + "." + $WebSrvDomain + "\" + $FSShare)
             try {
+                Write-Host ("Connection to web server: [" + $WebSvrShare + "] using credentials: [" + $FSCredentials + "].")
                 $PSDrvName = (New-PSDrive -Name ("WebDest" + $i) -PSProvider "FileSystem" -Root $WebSvrShare -Credential $FSCredentials)
                 foreach ($FolderName in $ContentList) {
                     $SrcPath = ($LocalTempPath + "\" + $FolderName)
@@ -169,6 +186,7 @@ if ($FSCredentials) {
                     Write-Host ("Copying files from: [" + $SrcPath+ "] to [" + $DestPath + "].")
                     Copy-Item -Path $SrcPath -Destination $DestPath -Recurse -Force | Out-Null
                 }
+                Write-Host ("Disconnected from file server: [" + $WebSvrShare + "].")
                 Remove-PSDrive -Name ("WebDest" + $i)
             }
             catch {
