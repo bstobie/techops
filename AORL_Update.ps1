@@ -186,7 +186,7 @@ if ($FSCredentials) {
                     Write-Host ("`tCopying files from: [" + $SrcPath+ "] to [" + $DestPath + "].`r")
                     Copy-Item -Path $SrcPath -Destination $DestPath -Recurse -Force | Out-Null
                 }
-                Write-Host ("Disconnected from file server: [" + $WebSvrShare + "].`r")
+                Write-Host ("`tDisconnected from file server: [" + $WebSvrShare + "].`r")
                 Remove-PSDrive -Name ("WebDest" + $i)
             }
             catch {
