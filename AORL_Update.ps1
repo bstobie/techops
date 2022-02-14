@@ -122,7 +122,7 @@ if ($FSCredentials) {
         $FolderYear = RightString $FolderName 4
         $FSFullPath = ("Policy and Procedures\" + $FolderYear + "\" + $FolderName)
         try {
-            Write-Host ("Connection to file server: [" + $FSSrcShare + "] using credentials: [" + $FSCredentials + "].")
+            Write-Host ("Connection to file server: [" + $FSSrcShare + "] using credentials: [" + $FSCredentials.UserName + "].")
             $PSDrvName = (New-PSDrive -Name "RemoteFS" -PSProvider "FileSystem" -Root $FSSrcShare -Credential $FSCredentials)
             $FilePath = ($PSDrvName.Name + ":\" + $FSFullPath + "\*.zip")
             if (Test-Path -Path $FilePath) {
@@ -176,7 +176,7 @@ if ($FSCredentials) {
             Set-Variable -Name ContentList -Value @("1gwebhelp","webhelp")
             $WebSvrShare = ("\\" + $WebServer + "." + $WebSrvDomain + "\" + $FSShare)
             try {
-                Write-Host ("Connection to web server: [" + $WebSvrShare + "] using credentials: [" + $FSCredentials + "].")
+                Write-Host ("Connection to web server: [" + $WebSvrShare + "] using credentials: [" + $FSCredentials.UserName + "].")
                 $PSDrvName = (New-PSDrive -Name ("WebDest" + $i) -PSProvider "FileSystem" -Root $WebSvrShare -Credential $FSCredentials)
                 foreach ($FolderName in $ContentList) {
                     $SrcPath = ($LocalTempPath + "\" + $FolderName)
