@@ -126,7 +126,7 @@ if ($FSCredentials) {
             $PSDrvName = (New-PSDrive -Name "RemoteFS" -PSProvider "FileSystem" -Root $FSSrcShare -Credential $FSCredentials)
             $FilePath = ($PSDrvName.Name + ":\" + $FSFullPath + "\*.zip")
             if (Test-Path -Path $FilePath) {
-                Write-Host ("Copying zip files [" + $FilePath + "] to temporary folder: [" + $LocalTempPath + "].`r")
+                Write-Host ("`tCopying zip files [" + $FilePath + "] to temporary folder: [" + $LocalTempPath + "].`r")
                 Copy-Item -Path $FilePath -Destination $LocalTempPath
             }
             else {
@@ -138,7 +138,7 @@ if ($FSCredentials) {
             $Error.Clear()
         }
         finally {
-            Write-Host ("Disconnected from file server: [" + $FSSrcShare + "].`r")
+            Write-Host ("`tDisconnected from file server: [" + $FSSrcShare + "].`r")
             Remove-PSDrive -Name "RemoteFS"
         }
         Set-Variable -Name ContentList -Value @("1gwebhelp","webhelp")
@@ -181,9 +181,9 @@ if ($FSCredentials) {
                 foreach ($FolderName in $ContentList) {
                     $SrcPath = ($LocalTempPath + "\" + $FolderName)
                     $DestPath = ($PSDrvName.Name + ":\" + $FolderName)
-                    Write-Host ("Deleting files from: [" + $DestPath + "].`r")
+                    Write-Host ("`tDeleting files from: [" + $DestPath + "].`r")
                     Remove-Item -Path $DestPath -Recurse -Force | Out-Null
-                    Write-Host ("Copying files from: [" + $SrcPath+ "] to [" + $DestPath + "].`r")
+                    Write-Host ("`tCopying files from: [" + $SrcPath+ "] to [" + $DestPath + "].`r")
                     Copy-Item -Path $SrcPath -Destination $DestPath -Recurse -Force | Out-Null
                 }
                 Write-Host ("Disconnected from file server: [" + $WebSvrShare + "].`r")
