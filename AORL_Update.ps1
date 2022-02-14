@@ -110,11 +110,11 @@ if ($FSCredentials) {
     #>
     Set-Variable -Name LocalTempPath -Value ("E:\Temp\" + $FSShare)
     if (!(Test-Path -Path $LocalTempPath)) {
-        Write-Host ("Creating temporary folder: [" + $LocalTempPath + "].")
+        Write-Host ("Creating temporary folder: [" + $LocalTempPath + "].`r`n")
         New-Item -Path $LocalTempPath -ItemType Directory | Out-Null
     }
     else {
-        Write-Host ("Emptied temporary folder: [" + $LocalTempPath + "].")
+        Write-Host ("Emptied temporary folder: [" + $LocalTempPath + "].`r`n")
         Remove-Item -Path ($LocalTempPath + "\*") -Recurse -Force | Out-Null
     }
     $FolderName = Test-Date $RevisionDate.Replace("-","/")
@@ -122,11 +122,11 @@ if ($FSCredentials) {
         $FolderYear = RightString $FolderName 4
         $FSFullPath = ("Policy and Procedures\" + $FolderYear + "\" + $FolderName)
         try {
-            Write-Host ("Connection to file server: [" + $FSSrcShare + "] using credentials: [" + $FSCredentials.UserName + "].")
+            Write-Host ("Connection to file server: [" + $FSSrcShare + "] using credentials: [" + $FSCredentials.UserName + "].`r`n")
             $PSDrvName = (New-PSDrive -Name "RemoteFS" -PSProvider "FileSystem" -Root $FSSrcShare -Credential $FSCredentials)
             $FilePath = ($PSDrvName.Name + ":\" + $FSFullPath + "\*.zip")
             if (Test-Path -Path $FilePath) {
-                Write-Host ("Copying zip files [" + $FilePath + "] to temporary folder: [" + $LocalTempPath + "].")
+                Write-Host ("Copying zip files [" + $FilePath + "] to temporary folder: [" + $LocalTempPath + "].`r")
                 Copy-Item -Path $FilePath -Destination $LocalTempPath
             }
             else {
@@ -138,13 +138,13 @@ if ($FSCredentials) {
             $Error.Clear()
         }
         finally {
-            Write-Host ("Disconnected from file server: [" + $FSSrcShare + "].")
+            Write-Host ("Disconnected from file server: [" + $FSSrcShare + "].`r")
             Remove-PSDrive -Name "RemoteFS"
         }
         Set-Variable -Name ContentList -Value @("1gwebhelp","webhelp")
         foreach ($ZipFileName in $ContentList) {
             $LocalZipFile = ($LocalTempPath + "\" + $ZipFileName)
-            Write-Host ("Expanding: [" + $LocalZipFile + "] to temporary folder.")
+            Write-Host ("Expanding: [" + $LocalZipFile + "] to temporary folder.`r`n")
             Expand-Archive -Path ($LocalZipFile + ".zip") -DestinationPath $LocalZipFile -ErrorAction $EAPreference
             Remove-Item -Path ($LocalZipFile + ".zip") -Force -Verbose
         }
@@ -176,17 +176,17 @@ if ($FSCredentials) {
             Set-Variable -Name ContentList -Value @("1gwebhelp","webhelp")
             $WebSvrShare = ("\\" + $WebServer + "." + $WebSrvDomain + "\" + $FSShare)
             try {
-                Write-Host ("Connection to web server: [" + $WebSvrShare + "] using credentials: [" + $FSCredentials.UserName + "].")
+                Write-Host ("Connection to web server: [" + $WebSvrShare + "] using credentials: [" + $FSCredentials.UserName + "].`r`n")
                 $PSDrvName = (New-PSDrive -Name ("WebDest" + $i) -PSProvider "FileSystem" -Root $WebSvrShare -Credential $FSCredentials)
                 foreach ($FolderName in $ContentList) {
                     $SrcPath = ($LocalTempPath + "\" + $FolderName)
                     $DestPath = ($PSDrvName.Name + ":\" + $FolderName)
-                    Write-Host ("Deleting files from: [" + $DestPath + "].")
+                    Write-Host ("Deleting files from: [" + $DestPath + "].`r")
                     Remove-Item -Path $DestPath -Recurse -Force | Out-Null
-                    Write-Host ("Copying files from: [" + $SrcPath+ "] to [" + $DestPath + "].")
+                    Write-Host ("Copying files from: [" + $SrcPath+ "] to [" + $DestPath + "].`r")
                     Copy-Item -Path $SrcPath -Destination $DestPath -Recurse -Force | Out-Null
                 }
-                Write-Host ("Disconnected from file server: [" + $WebSvrShare + "].")
+                Write-Host ("Disconnected from file server: [" + $WebSvrShare + "].`r")
                 Remove-PSDrive -Name ("WebDest" + $i)
             }
             catch {
