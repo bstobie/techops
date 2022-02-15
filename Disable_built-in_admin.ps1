@@ -35,8 +35,13 @@ function Get-LoggedInUser {
     process {
         foreach ($Computer in $ComputerName) {
             try {
-                $Computer = $Computer.ToUpper()
-                $SessionList = quser /Server:$Computer 2 > $null
+                $Computer = $Computer.ToLower()
+                if (!($Computer -eq "localhost")) {
+                    $SessionList = quser /Server:$Computer 2 > $null
+                }
+                else {
+                    $SessionList = quser
+                }
                 if ($SessionList) {
                     $UserInfo = foreach ($Session in ($SessionList | Select-Object -Skip 1)) {
                         $Session = $Session.ToString().trim() -replace "\s+", " " -replace ">", ""
@@ -102,7 +107,7 @@ foreach ($Account in $LocalAccounts) {
                         $Account.Name | Disable-LocalUser
                     }
                     Default {
-                        $User = Get-WmiObject "Win32_UserAccount" -Filter "LocalAccount = True AND Name = '" + $Account.Name + "'"
+                        $User = Get-WmiObject "Win32_UserAccount" -Filter ("LocalAccount = True AND Name = '" + $Account.Name + "'")
                         $User.Disabled = $True
                         $User.Put()
                     }
