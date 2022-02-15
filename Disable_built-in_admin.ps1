@@ -1,6 +1,6 @@
 [CmdletBinding()]
 param (
-    [Parameter(Position=0,Mandatory=$false)][string]$CompAcct = $env:COMPUTERNAME
+    [Parameter(Position=0,Mandatory=$false)][string]$CompAcct = "localhost"
 )
 function Get-LoggedInUser {
     <#
@@ -97,7 +97,16 @@ foreach ($Account in $LocalAccounts) {
         $LocalAdmin = Get-LoggedInUser -ComputerName $CompAcct -UserName $Account.Name
         if (!($LocalAdmin)) {
             try {
-                $Account.Name | Disable-LocalUser
+                switch (($PSVersion).Major) {
+                    {($_ -eq 5)} {
+                        $Account.Name | Disable-LocalUser
+                    }
+                    Default {
+                        $User = Get-WmiObject "Win32_UserAccount" -Filter "LocalAccount = True AND Name = '" + $Account.Name + "'"
+                        $User.Disabled = $True
+                        $User.Put()
+                    }
+                }
             }
             catch {
                 $Error.Clear()
