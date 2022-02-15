@@ -13,8 +13,9 @@ Set-Variable -Name LocalServices -Value @()
 Set-Variable -Name ListWebApps -Value @()
 Set-Variable -Name AppPoolUser -Value $null
 Set-Variable -Name UserDescription -Value "Local user account for Thycotic - Secret Server"
-$PSVersion = ($PSVersionTable.PSVersion).Major
-switch ($PSVersion) {
+$PSVersion = $PSVersionTable.PSVersion
+Write-Host ("Powershell version: " + $PSVersion)
+switch (($PSVersion).Major) {
     {($_ -eq 5)} {
         $LocalAccounts += Get-LocalUser; Break
     }
@@ -40,7 +41,7 @@ if (!($bFound)) {
         add-type -AssemblyName System.Web
         $AccountPass = [System.Web.Security.Membership]::GeneratePassword($length, $nonAlphaChars)
         $SecurePass = ConvertTo-SecureString -String $AccountPass -AsPlainText -Force
-        switch ($PSVersion) {
+        switch (($PSVersion).Major) {
             {($_ -eq 5)} {
                 New-LocalUser -Name $ThycoticUser -Password $SecurePass -FullName "Secret Server" -Description $UserDescription | Out-Null
                 Add-LocalGroupMember -Group "Administrators" -Member $ThycoticUser
