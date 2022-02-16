@@ -96,27 +96,37 @@ switch (($PSVersion).Major) {
         $LocalAccounts += Get-WmiObject -Class Win32_UserAccount -Filter "LocalAccount = True"; Break
     }
 }
+if ([System.Diagnostics.EventLog]::SourceExists("TechOps") -eq $False) {
+    New-EventLog -LogName Application -Source "TechOps"
+}
 Set-Variable -Name LoggedInAdmin -Value $null
-foreach ($Account in $LocalAccounts) {
-    if ($Account.SID -like "*-500") {
-        $LoggedInAdmin = Get-LoggedInUser -ComputerName $CompAcct -UserName $Account.Name
-        if (!($LoggedInAdmin)) {
-            try {
-                switch (($PSVersion).Major) {
-                    {($_ -eq 5)} {
-                        $Account.Name | Disable-LocalUser
-                    }
-                    Default {
-                        $User = Get-WmiObject "Win32_UserAccount" -Filter ("LocalAccount = True AND Name = '" + $Account.Name + "'")
-                        $User.Disabled = $True
-                        $User.Put()
+do {
+    $LoggedInAdmin = $null
+    foreach ($Account in $LocalAccounts) {
+        if ($Account.SID -like "*-500") {
+            $LoggedInAdmin = Get-LoggedInUser -ComputerName $CompAcct -UserName $Account.Name
+            if (!($LoggedInAdmin)) {
+                try {
+                    switch (($PSVersion).Major) {
+                        {($_ -eq 5)} {
+                            $Account.Name | Disable-LocalUser
+                        }
+                        Default {
+                            $User = Get-WmiObject "Win32_UserAccount" -Filter ("LocalAccount = True AND Name = '" + $Account.Name + "'")
+                            $User.Disabled = $True
+                            $User.Put()
+                        }
                     }
                 }
+                catch {
+                    $Error.Clear()
+                }
             }
-            catch {
-                $Error.Clear()
+            else {
+                $Message = ("The built-in admin: " + $Account.Name + " is using actively logged in.")
+                Write-EventLog -LogName Application -Source "TechOps" -EventID 4673 -EntryType Error -Message $Message -Category 1 -RawData 10,20
             }
         }
     }
-}
+} while ($LoggedInAdmin)
 Set-Location $CurrentFolder
