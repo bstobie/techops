@@ -96,11 +96,11 @@ switch (($PSVersion).Major) {
         $LocalAccounts += Get-WmiObject -Class Win32_UserAccount -Filter "LocalAccount = True"; Break
     }
 }
-Set-Variable -Name LocalAdmin -Value $null
+Set-Variable -Name LoggedInAdmin -Value $null
 foreach ($Account in $LocalAccounts) {
     if ($Account.SID -like "*-500") {
-        $LocalAdmin = Get-LoggedInUser -ComputerName $CompAcct -UserName $Account.Name
-        if (!($LocalAdmin)) {
+        $LoggedInAdmin = Get-LoggedInUser -ComputerName $CompAcct -UserName $Account.Name
+        if (!($LoggedInAdmin)) {
             try {
                 switch (($PSVersion).Major) {
                     {($_ -eq 5)} {
