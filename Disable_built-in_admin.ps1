@@ -1,6 +1,6 @@
 [CmdletBinding()]
 param (
-    [Parameter(Position=0,Mandatory=$false)][string]$CompAcct = "localhost"
+    [Parameter(Position = 0,Mandatory = $false)][string]$CompAcct = "localhost"
 )
 function Get-LoggedInUser {
     <#
