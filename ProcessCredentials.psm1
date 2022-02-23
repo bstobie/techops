@@ -13,7 +13,7 @@ function SetCredentials {
         [String][Parameter(Position = 0, Mandatory = $true)]$SecureUser,
         [String][Parameter(Position = 1, Mandatory = $true)]$Domain,
         [string][Parameter(Position = 2, Mandatory = $false)]$SecureString,
-        [byte][Parameter(Position = 3, Mandatory = $false)][ValidateSet(16,24,32)]$AES_Size = 32,
+        [byte][Parameter(Position = 3, Mandatory = $false)][ValidateSet(16, 24, 32)]$AES_Size = 32,
         [bool][Parameter(Position = 4, Mandatory = $false)]$ResetPassword = $false
     )
     Set-Variable -Name CredPath -Value ($env:USERPROFILE + "\AppData\Local\Credentials")
