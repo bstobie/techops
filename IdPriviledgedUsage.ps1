@@ -2,8 +2,12 @@
 param (
     [parameter(Position = 0, Mandatory = $false)][string]$LMDomain = "corpid.net",
     [Parameter(Position = 1, Mandatory = $false)][string]$CompAcct = "localhost",
-    [Parameter(Position = 2, Mandatory = $false)][decimal]$TimeDelay = 1
+    [Parameter(Position = 2, Mandatory = $false)][decimal]$TimeDelay = 1,
+    [Parameter(Position = 3, Mandatory = $false)][string]$SecureString
 )
+if ($SecureString) {
+    $SecureString = ConvertTo-SecureString -String $SecureString -ErrorAction Stop
+}
 Clear-History; Clear-Host; $Error.Clear()
 $CurrentFolder = Get-Location
 Set-Variable -Name SystemPath -Value ($env:SystemRoot + "\System32")
@@ -69,7 +73,7 @@ else {
     }
 }
 Import-Module ProcessCredentials
-$SvcAcctCreds = SetCredentials -SecureUser ("svc_lmdatacllctr@" + $LMDomain) -Domain $LMDomain
+$SvcAcctCreds = SetCredentials -SecureUser ("svc_lmdatacllctr@" + $LMDomain) -Domain $LMDomain -SecureString $SecureString
 if (!($SvcAcctCreds)) {$SvcAcctCreds = Get-Credential -Credential ("svc_lmdatacllctr@" + $LMDomain)}
 $Session = New-PSSession -ComputerName $CompAcct -Credential $SvcAcctCreds
 Set-Variable -Name SchTskTempFile -Value ("C:\Temp\SchTasks\SchTsk.csv")
