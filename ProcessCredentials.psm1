@@ -10,10 +10,11 @@ function AdminReset {
 function SetCredentials {
     [CmdletBinding()]
     param (
-        [String][Parameter(Position = 0,Mandatory = $true)]$SecureUser,
-        [String][Parameter(Position = 1,Mandatory = $true)]$Domain,
-        [byte][Parameter(Position = 2,Mandatory = $false)][ValidateSet(16,24,32)]$AES_Size = 32,
-        [bool][Parameter(Position = 3,Mandatory = $false)]$ResetPassword = $false
+        [String][Parameter(Position = 0, Mandatory = $true)]$SecureUser,
+        [String][Parameter(Position = 1, Mandatory = $true)]$Domain,
+        [string][Parameter(Position = 2, Mandatory = $false)]$SecureString,
+        [byte][Parameter(Position = 3, Mandatory = $false)][ValidateSet(16,24,32)]$AES_Size = 32,
+        [bool][Parameter(Position = 4, Mandatory = $false)]$ResetPassword = $false
     )
     Set-Variable -Name CredPath -Value ($env:USERPROFILE + "\AppData\Local\Credentials")
     Set-Variable -Name WorkingPath -Value ($CredPath + "\" + $Domain)
@@ -44,7 +45,9 @@ function SetCredentials {
                 $PrivateKey[$intCount] = Get-Random -Minimum 0 -Maximum 255
             } until ($intCount -ge ($AES_Size - 1))
             $PrivateKey | Out-File ($PathKeyFile)
-            $SecureString = Read-Host -Prompt ("Enter your [" + $SecureUser + "] credentials") -AsSecureString
+            if (!($SecureString)) {
+                $SecureString = Read-Host -Prompt ("Enter your [" + $SecureUser + "] credentials") -AsSecureString
+            }
             $SecureString | ConvertFrom-SecureString -Key (Get-Content $PathKeyFile) | Set-Content $PathPassFile
         }
     } while ($ResetPassword -eq $false)
