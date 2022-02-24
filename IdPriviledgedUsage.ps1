@@ -3,10 +3,10 @@ param (
     [parameter(Position = 0, Mandatory = $false)][string]$LMDomain = "corpid.net",
     [Parameter(Position = 1, Mandatory = $false)][string]$CompAcct = "localhost",
     [Parameter(Position = 2, Mandatory = $false)][decimal]$TimeDelay = 1,
-    [Parameter(Position = 3, Mandatory = $false)]$SecureString
+    [Parameter(Position = 3, Mandatory = $false)]$ClearText
 )
-if ($SecureString) {
-    $SecureString = ConvertTo-SecureString $SecureString -AsPlainText -Force
+if ($ClearText) {
+    $SecureText = ConvertTo-SecureString $ClearText -AsPlainText -Force
 }
 Clear-History; Clear-Host; $Error.Clear()
 $CurrentFolder = Get-Location
@@ -76,7 +76,12 @@ if (Test-Path -Path $SrcFile) {
     Remove-Item -Path $SrcFile -Force -ErrorAction SilentlyContinue | Out-Null
 }
 Import-Module ProcessCredentials
-$SvcAcctCreds = SetCredentials -SecureUser ("svc_lmdatacllctr@" + $LMDomain) -Domain $LMDomain -SecureString $SecureString
+if ($SecureText) {
+    $BSTR = [System.Runtime.InteropServices.Marshal]::SecureStringToBSTR($SecureText)
+    $ClearText = [System.Runtime.InteropServices.Marshal]::PtrToStringAuto($BSTR)
+}
+$SvcAcctCreds = SetCredentials -SecureUser ("svc_lmdatacllctr@" + $LMDomain) -Domain $LMDomain -SecureString $ClearText
+Remove-Variable -Name ClearText -Force -ErrorAction SilentlyContinue
 if (!($SvcAcctCreds)) {$SvcAcctCreds = Get-Credential -Credential ("svc_lmdatacllctr@" + $LMDomain)}
 $Session = New-PSSession -ComputerName $CompAcct -Credential $SvcAcctCreds
 Set-Variable -Name SchTskTempFile -Value ("C:\Temp\SchTasks\SchTsk.csv")
