@@ -16,6 +16,9 @@ function SetCredentials {
         [byte][Parameter(Position = 3, Mandatory = $false)][ValidateSet(16, 24, 32)]$AES_Size = 32,
         [bool][Parameter(Position = 4, Mandatory = $false)]$ResetPassword = $false
     )
+    if ($SecureString) {
+        $ResetPassword = $true
+    }
     Set-Variable -Name CredPath -Value ($env:USERPROFILE + "\AppData\Local\Credentials")
     Set-Variable -Name WorkingPath -Value ($CredPath + "\" + $Domain)
     Set-Variable -Name KeyFile -Value (($SecureUser.Split("@")[0]) + ".key")
