@@ -41,7 +41,7 @@ function SetCredentials {
             $intCount = -1
             $PrivateKey = New-Object Byte[] $AES_Size
             do {
-                $intCount++
+                $intCount ++
                 $PrivateKey[$intCount] = Get-Random -Minimum 0 -Maximum 255
             } until ($intCount -ge ($AES_Size - 1))
             $PrivateKey | Out-File ($PathKeyFile)
