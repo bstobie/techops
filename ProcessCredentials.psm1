@@ -18,10 +18,13 @@ function SetCredentials {
     )
     if ($SecureString) {
         $ClearText = $SecureString
-        Remove-Variable -Name SecureString -Force -ErrorAction SilentlyContinue | Out-Null
+        Remove-Variable -Name SecureString -Force -ErrorAction SilentlyContinue
         $SecureString = ConvertTo-SecureString $ClearText -AsPlainText -Force
-        Remove-Variable -Name ClearString -Force -ErrorAction SilentlyContinue | Out-Null
+        Remove-Variable -Name ClearString -Force -ErrorAction SilentlyContinue
         $ResetPassword = $true
+    }
+    else {
+        Remove-Variable -Name SecureString -Force -ErrorAction SilentlyContinue
     }
     Set-Variable -Name CredPath -Value ($env:USERPROFILE + "\AppData\Local\Credentials")
     Set-Variable -Name WorkingPath -Value ($CredPath + "\" + $Domain)
@@ -53,7 +56,6 @@ function SetCredentials {
             } until ($intCount -ge ($AES_Size - 1))
             $PrivateKey | Out-File ($PathKeyFile)
             if (!($SecureString)) {
-                Remove-Variable -Name SecureString -Force -ErrorAction SilentlyContinue | Out-Null
                 $SecureString = Read-Host -Prompt ("Enter your [" + $SecureUser + "] credentials") -AsSecureString
             }
             $SecureString | ConvertFrom-SecureString -Key (Get-Content $PathKeyFile) | Set-Content $PathPassFile
