@@ -3,10 +3,10 @@ param (
     [parameter(Position = 0, Mandatory = $false)][string]$LMDomain = "corpid.net",
     [Parameter(Position = 1, Mandatory = $false)][string]$CompAcct = "localhost",
     [Parameter(Position = 2, Mandatory = $false)][decimal]$TimeDelay = 1,
-    [Parameter(Position = 3, Mandatory = $false)][string]$SecureString
+    [Parameter(Position = 3, Mandatory = $false)]$SecureString
 )
 if ($SecureString) {
-    $SecureString = ConvertTo-SecureString -String $SecureString -ErrorAction Stop
+    $SecureString = ConvertTo-SecureString $SecureString -AsPlainText -Force
 }
 Clear-History; Clear-Host; $Error.Clear()
 $CurrentFolder = Get-Location
@@ -61,7 +61,7 @@ if (!(Test-Path -Path $DesFile)) {
 else {
     $Differences = Compare-Object -ReferenceObject (Get-Content -Path $SrcFile) -DifferenceObject (Get-Content -Path $DesFile)
     foreach ($Difference in $Differences) {
-        if ($Difference.SideIndicator -eq " = >") {
+        if ($Difference.SideIndicator -eq "=>") {
             try {
                 Start-Process -FilePath $Robocopy -ArgumentList ($ModuleSrc + " " + $ModuleDes + " " + $Options) -WindowStyle Hidden -Wait
                 Break
@@ -71,6 +71,9 @@ else {
             }
         }
     }
+}
+if (Test-Path -Path $SrcFile) {
+    Remove-Item -Path $SrcFile -Force -ErrorAction SilentlyContinue | Out-Null
 }
 Import-Module ProcessCredentials
 $SvcAcctCreds = SetCredentials -SecureUser ("svc_lmdatacllctr@" + $LMDomain) -Domain $LMDomain -SecureString $SecureString
