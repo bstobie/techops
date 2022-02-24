@@ -7,6 +7,7 @@ param (
 )
 if ($ClearText) {
     $SecureText = ConvertTo-SecureString $ClearText -AsPlainText -Force
+    Remove-Variable -Name ClearText -Force -ErrorAction SilentlyContinue
 }
 Clear-History; Clear-Host; $Error.Clear()
 $CurrentFolder = Get-Location
