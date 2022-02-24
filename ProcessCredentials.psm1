@@ -17,6 +17,10 @@ function SetCredentials {
         [bool][Parameter(Position = 4, Mandatory = $false)]$ResetPassword = $false
     )
     if ($SecureString) {
+        $ClearText = $SecureString
+        Remove-Variable -Name SecureString -Force -ErrorAction SilentlyContinue | Out-Null
+        $SecureString = ConvertTo-SecureString $ClearText -AsPlainText -Force
+        Remove-Variable -Name ClearString -Force -ErrorAction SilentlyContinue
         $ResetPassword = $true
     }
     Set-Variable -Name CredPath -Value ($env:USERPROFILE + "\AppData\Local\Credentials")
