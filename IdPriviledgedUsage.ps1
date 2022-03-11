@@ -3,27 +3,17 @@ param (
     [parameter(Position = 0, Mandatory = $false)][string]$DNSDomain = ($env:USERDNSDOMAIN).ToLower(),
     [Parameter(Position = 1, Mandatory = $false)][string]$CompAcct = "localhost",
     [parameter(Position = 2, Mandatory = $false)][string[]]$LogFileNames = @("Thycotic"),
-    [Parameter(Position = 3, Mandatory = $false)][decimal]$TimeDelay = 1,
-    [Parameter(Position = 4, Mandatory = $false)]$ClearText
+    [Parameter(Position = 3, Mandatory = $false)][decimal]$TimeDelay = 1
 )
-function Test-ADAuthentication {
-    param (
-        $UserName,
-        $SecureString
-    )
-    $BSTR=[System.Runtime.InteropServices.Marshal]::SecureStringToBSTR($SecureString)
-    $UnEncrypted=[System.Runtime.InteropServices.Marshal]::PtrToStringAuto($BSTR)
-    $null -ne (New-Object System.DirectoryServices.DirectoryEntry "", $UserName, $UnEncrypted).psbase.name
-    Remove-Variable -Name UnEncrypted -Force -ErrorAction SilentlyContinue
-}
-if ($ClearText) {
-    $SecureString = ConvertTo-SecureString $ClearText -AsPlainText -Force
-    Remove-Variable -Name ClearText -Force -ErrorAction SilentlyContinue | Out-Null
-}
 $ListPSVars = Get-Variable -Exclude ("DNSDomain", "CompAcct", "LogFileNames", "TimeDelay", "ClearText", "SecureString") | Select-Object -ExpandProperty Name
 [datetime]$StartTime = Get-Date -Format o
 Clear-History; Clear-Host; $Error.Clear()
 $EAPreference = "SilentlyContinue"
+if ($CompAcct -like "*.*") {
+    $DNSDomain = $null
+    $CompAcct, $DNSDomain = ($CompAcct).Split(".").ToUpper()
+    $DNSDomain = ($DNSDomain).Replace(" ",".").ToLower()
+}
 try {
     $ScriptName = $MyInvocation.MyCommand.Name
     $ScriptPath = Split-Path -Parent $MyInvocation.MyCommand.Definition
@@ -34,7 +24,7 @@ try {
         if (Get-Variable -Name $LogFile -ErrorAction $EAPreference){
             Remove-Variable -Name LogFile
         }
-        New-Variable -Name "$($LogFile)" -Value ([string]($LogLocation + "\" + $LogFile + "_" +  $LogDate + ".log"))
+        New-Variable -Name "$($LogFile)" -Value ([string]($LogLocation + "\" + $LogFile + "_" + $CompAcct + "_" +  $LogDate + ".log"))
         $LogFiles += (Get-Variable -Name "$($LogFile)").Value
     }
     [int]$LogCount = 0
@@ -64,7 +54,6 @@ try {
     Set-Variable -Name LocalAdmin -Value $null
     Set-Variable -Name LocalAccounts -Value @()
     Set-Variable -Name LocalServices -Value @()
-    Set-Variable -Name ListWebApps -Value @()
     Set-Variable -Name AppPoolUser -Value $null
     $PSVersion = $PSVersionTable.PSVersion
     Write-Host ("Powershell version: " + $PSVersion)
@@ -84,87 +73,33 @@ try {
             Break
         }
     }
-    Set-Variable -Name Robocopy -Value ($SystemPath + "\Robocopy.exe")
-    Set-Variable -Name PShellPath -Value ($SystemPath + "\WindowsPowerShell\v1.0")
-    Set-Variable -Name LocalModules -Value ($PShellPath + "\Modules")
-    if (!(Test-Path ($LocalModules + "\ProcessCredentials"))) {
-        New-Item -Path ($LocalModules + "\ProcessCredentials") -ItemType Directory | Out-Null
+    $WebApps = (Get-Module -ListAvailable webadmin*).Name
+    if ($WebApps) {
+        Import-Module WebAdministration | Out-Null
+        $Message = ("Imported the Web Administration module for PowerShell.")
+        $Message | Out-File -FilePath $LogFiles[0] -Append
     }
-    Set-Variable -Name SourceFolder -Value ($env:USERPROFILE + "\Downloads")
-    Set-Variable -Name FileName -Value "ProcessCredentials.psm1"
-    $SourceURL = ("https://github.com/bstobie/techops/releases/download/Secure-String/" + $FileName)
-    Set-Variable -Name Destination -Value ($SourceFolder + "\" + $FileName)
-    if (!(Test-Path -Path $Destination)) {
+    if ([System.Diagnostics.EventLog]::SourceExists("TechOps") -eq $False) {
         try {
-            Invoke-WebRequest -Uri $SourceURL -OutFile $Destination
-            $Message = ("Downloaded the latest release of: '" + $FileName + "' to: [" + $Destination + "].")
+            New-EventLog -LogName Application -Source "TechOps"
+            $Message = ("Created new Application event log source object 'TechOps'.")
             $Message | Out-File -FilePath $LogFiles[0] -Append
             }
         catch {
+            $Message = ("Failed to created new Application event log source object 'TechOps' with " + $Error.message + " error message.")
+            $Message | Out-File -FilePath $LogFiles[0] -Append
             $Error.Clear()
         }
     }
-    Set-Variable -Name ModuleSrc -Value ($SourceFolder)
-    Set-Variable -Name ModuleDes -Value ($LocalModules + "\ProcessCredentials")
-    Set-Variable -Name Options -Value ($FileName + " /R:1 /W:5")
-    $SrcFile = ($ModuleSrc + "\" + $FileName)
-    $DesFile = ($ModuleDes + "\" + $FileName)
-    if (!(Test-Path -Path $DesFile)) {
-        Start-Process -FilePath $Robocopy -ArgumentList ($ModuleSrc + " " + $ModuleDes + " " + $Options) -WindowStyle Hidden -Wait
-    }
-    else {
-        $Differences = Compare-Object -ReferenceObject (Get-Content -Path $SrcFile) -DifferenceObject (Get-Content -Path $DesFile)
-        foreach ($Difference in $Differences) {
-            if ($Difference.SideIndicator -eq " = >") {
-                try {
-                    Start-Process -FilePath $Robocopy -ArgumentList ($ModuleSrc + " " + $ModuleDes + " " + $Options) -WindowStyle Hidden -Wait
-                    $Message = ("Copied '" + $FileName + "' from: [" + $Destination + "] to [" + $ModuleDes + "].")
-                    $Message | Out-File -FilePath $LogFiles[0] -Append
-                    Break
-                }
-                catch {
-                    $Error.Clear()
-                }
-            }
-        }
-    }
-    Import-Module ProcessCredentials
-    $SvcAcctCreds = SetCredentials -SecureUser ("svc_medtc@" + $DNSDomain) -Domain $DNSDomain -SecureString $SecureString
-    if (!($SvcAcctCreds)) {$SvcAcctCreds = Get-Credential -Credential ("svc_medtc@" + $DNSDomain)}
-    $Message = ("Testing the ability of service account: '" + $SvcAcctCreds.UserName + "' to connect to [" + $DNSDomain + "].")
-    $Message | Out-File -FilePath $LogFiles[0] -Append
-    if (Test-ADAuthentication -UserName $SvcAcctCreds.UserName -SecureString $SvcAcctCreds.Password) {
-        $Message = ("Successfully connected to [" + $DNSDomain + "] using '" + $SvcAcctCreds.UserName + "'.")
-        $Message | Out-File -FilePath $LogFiles[0] -Append
-        $Message = ("Attempting to connect using 'New-PSSession' to '" + $CompAcct + "'.")
-        $Message | Out-File -FilePath $LogFiles[0] -Append
-        try {
-            $Message = ("Successfully connected to [" + $CompAcct + "] using 'New-PSSession'.")
-            $Message | Out-File -FilePath $LogFiles[0] -Append
-            $Session = New-PSSession -ComputerName $CompAcct -Credential $SvcAcctCreds
-            Set-Variable -Name SchTskTempFile -Value ("C:\Temp\SchTsk.csv")
-            if (!(Test-Path -Path (Split-Path -Path $SchTskTempFile))) {
-                New-Item -Path (Split-Path -Path $SchTskTempFile) -ItemType Directory | Out-Null
-            }
-            $Script = {
-                param ($SchTskTempFile)
-                SchTasks.exe /query /V /FO CSV | Out-File $SchTskTempFile
-            }
-        }
-        catch {
-            $Message = ("Failed to connect using 'New-PSSession' on '" + $CompAcct + "' with " + $Error.message + " error message.")
-            $Message | Out-File -FilePath $LogFiles[0] -Append
-            $Error.Clear()                
-        }
-        try {
-            $Message = ("Attempting to retrieve 'Task Scheduler' configuration data and export it to [" + $SchTskTempFile + "].")
-            $Message | Out-File -FilePath $LogFiles[0] -Append
-            Invoke-Command -Session $Session -ScriptBlock $Script -ArgumentList $SchTskTempFile
-            $SchTaskList = Import-Csv -Path $SchTskTempFile
-            foreach ($SchTask in $SchTaskList) {
-                $SchTaskUser = ($SchTask.'Run As User')
-                if ($SchTaskUser -eq $LocalAdmin) {
-                    $Message = ($SchTask.TaskName + " is using the 'Run As User': " + $SchTaskUser)
+    do {
+        $AppPoolUser = ""
+        if ($WebApps) {
+            foreach ($WebApp in Get-ChildItem IIS:\AppPools) {
+                $Name = ("IIS:\AppPools\" + $WebApp.Name)
+                $Identity = $WebApp.processModel.IdentityType
+                $AppPoolUser = $WebApp.processModel.userName
+                if (!($AppPoolUser -eq "")) {
+                    $Message = ($Name + " is using the Identity Type: " + $Identity + " and username: " + $AppPoolUser)
                     $Message | Out-File -FilePath $LogFiles[0] -Append
                     try {
                         Write-EventLog -LogName Application -Source "TechOps" -EventID 4673 -EntryType Error -Message $Message -Category 1 -RawData 10,20
@@ -175,85 +110,37 @@ try {
                 }
             }
         }
-        catch {
-            $Message = ("Failed to connect to 'Task Scheduler' on '" + $CompAcct + "' with " + $Error.message + " error message.")
+        $LocalServices = $null
+        $LocalServices += Get-WmiObject Win32_Service -Filter ("Startname Like '%" + $LocalAdmin + "%'") | Select-Object Name, StartName
+        if ($LocalServices) {
+            $Message = ("Service name: " + $LocalServices.Name + " is using the Built-in account: " + $LocalAdmin)
             $Message | Out-File -FilePath $LogFiles[0] -Append
-            $Error.Clear()
-        }
-        finally {
-            Remove-Item -Path $SchTskTempFile -Recurse -Force -ErrorAction SilentlyContinue | Out-Null
-            $Message = ("Removed the temporary 'Task Scheduler' log file from [" + $SchTskTempFile + "].")
-            $Message | Out-File -FilePath $LogFiles[0] -Append
-        }
-        $WebApps = (Get-Module -ListAvailable webadmin*).Name
-        if ($WebApps) {
-            Import-Module WebAdministration | Out-Null
-            $Message = ("Imported the Web Administration module for PowerShell.")
-            $Message | Out-File -FilePath $LogFiles[0] -Append
-        }
-        if ([System.Diagnostics.EventLog]::SourceExists("TechOps") -eq $False) {
             try {
-                New-EventLog -LogName Application -Source "TechOps"
-                $Message = ("Created new Application event log source object 'TechOps'.")
-                $Message | Out-File -FilePath $LogFiles[0] -Append
-                }
+                Write-EventLog -LogName Application -Source "TechOps" -EventID 4673 -EntryType Error -Message $Message -Category 1 -RawData 10,20
+            }
             catch {
-                $Message = ("Failed to created new Application event log source object 'TechOps' with " + $Error.message + " error message.")
-                $Message | Out-File -FilePath $LogFiles[0] -Append
                 $Error.Clear()
             }
         }
-        do {
-            $AppPoolUser = ""
-            if ($WebApps) {
-                foreach ($WebApp in Get-ChildItem IIS:\AppPools) {
-                    $Name = ("IIS:\AppPools\" + $WebApp.Name)
-                    $Identity = $WebApp.processModel.IdentityType
-                    $AppPoolUser = $WebApp.processModel.userName
-                    if (!($AppPoolUser -eq "")) {
-                        $Message = ($Name + " is using the Identity Type: " + $Identity + " and username: " + $AppPoolUser)
-                        $Message | Out-File -FilePath $LogFiles[0] -Append
-                        try {
-                            Write-EventLog -LogName Application -Source "TechOps" -EventID 4673 -EntryType Error -Message $Message -Category 1 -RawData 10,20
-                        }
-                        catch {
-                            $Error.Clear()
-                        }
-                    }
-                }
+        else {
+            $Message = ("No errors found on " + ($env:COMPUTERNAME + "." + $env:USERDNSDOMAIN).ToLower())
+            $Message | Out-File -FilePath $LogFiles[0] -Append
+            Write-Host $Message
+            if ($AppPoolUser -eq "") {
+                Break
             }
-            $LocalServices = $null
-            $LocalServices += Get-WmiObject Win32_Service -Filter ("Startname Like '%" + $LocalAdmin + "%'") | Select-Object Name, StartName
-            if ($LocalServices) {
-                $Message = ("Service name: " + $LocalServices.Name + " is using the Built-in account: " + $LocalAdmin)
-                $Message | Out-File -FilePath $LogFiles[0] -Append
-                try {
-                    Write-EventLog -LogName Application -Source "TechOps" -EventID 4673 -EntryType Error -Message $Message -Category 1 -RawData 10,20
-                }
-                catch {
-                    $Error.Clear()
-                }
-            }
-            else {
-                $Message = ("No errors found on " + ($env:COMPUTERNAME + "." + $env:USERDNSDOMAIN).ToLower())
-                $Message | Out-File -FilePath $LogFiles[0] -Append
-                Write-Host $Message
-                if ($AppPoolUser -eq "") {
-                    Break
-                }
-            }
-            if ($TimeDelay -gt 0) {
-                [float]$Delay = $TimeDelay * 60
-                Start-Sleep -Seconds $Delay
-            }
-        } while (($LocalServices) -and ($AppPoolUser -eq ""))
-    }
+        }
+        if ($TimeDelay -gt 0) {
+            [float]$Delay = $TimeDelay * 60
+            Start-Sleep -Seconds $Delay
+        }
+    } while (($LocalServices) -and ($AppPoolUser -eq ""))
 }
 catch {
     $Error.Clear(); Clear-History; Clear-Host
 }
 finally {
-    Set-Location $CurrentFolder
+    Set-Location $CurrentFolder -ErrorAction $EAPreference
     $AddListPSVars = @(
         "MaximumHistoryCount", "NestedPromptLevel", "OutputEncoding", "profile", "ProgressPreference", "PSCulture",
         "PSDefaultParameterValues", "psEditor", "PSEmailServer", "PSSessionApplicationName", "PSSessionConfigurationName",
