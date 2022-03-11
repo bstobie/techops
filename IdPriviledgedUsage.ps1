@@ -127,7 +127,7 @@ try {
             $Message | Out-File -FilePath $LogFiles[0] -Append
             Write-Host $Message
             if ($AppPoolUser -eq "") {
-                Break
+                return 0
             }
         }
         if ($TimeDelay -gt 0) {
@@ -137,7 +137,8 @@ try {
     } while (($LocalServices) -and ($AppPoolUser -eq ""))
 }
 catch {
-    $Error.Clear(); Clear-History; Clear-Host
+    $Error.Clear()
+    return 1
 }
 finally {
     Set-Location $CurrentFolder -ErrorAction $EAPreference
