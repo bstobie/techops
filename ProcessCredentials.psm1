@@ -1,4 +1,4 @@
-function AdminReset {
+function Get-AdminReset {
     [CmdletBinding()]
     param (
         [String][Parameter(Position = 0,Mandatory = $true)]$KeyPath,
@@ -7,7 +7,7 @@ function AdminReset {
     if (Test-Path -Path $KeyPath) { Remove-Item -Path $KeyPath -Force | Out-Null }
     if (Test-Path -Path $PwdPath) { Remove-Item -Path $PwdPath -Force | Out-Null }
 }
-function SetCredentials {
+function Set-Credentials {
     [CmdletBinding()]
     param (
         [String][Parameter(Position = 0, Mandatory = $true)]$SecureUser,
@@ -34,7 +34,7 @@ function SetCredentials {
     Set-Variable -Name PathPassFile -Value ($WorkingPath + "\" + $PassFile)
     do {
         if ($ResetPassword) {
-            AdminReset -KeyPath $PathKeyFile -PwdPath $PathPassFile
+            Get-AdminReset -KeyPath $PathKeyFile -PwdPath $PathPassFile
             $ResetPassword = $false
         }
         elseif ((Test-Path -Path $PathKeyFile) -and (Test-Path -Path $PathPassFile)) {
@@ -46,7 +46,7 @@ function SetCredentials {
                 New-Item -Path $WorkingPath -ItemType Directory | Out-Null
             }
             else {
-                AdminReset -KeyPath $PathKeyFile -PwdPath $PathPassFile
+                Get-AdminReset -KeyPath $PathKeyFile -PwdPath $PathPassFile
             }
             $intCount = -1
             $PrivateKey = New-Object Byte[] $AES_Size
@@ -62,4 +62,4 @@ function SetCredentials {
         }
     } while ($ResetPassword -eq $false)
 }
-Export-ModuleMember -Function SetCredentials
+Export-ModuleMember -Function Set-Credentials
