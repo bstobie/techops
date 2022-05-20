@@ -1,5 +1,6 @@
 Import-Module -Name ProcessCredentials
 function Get-AdminUserName {
+    [CmdletBinding()]
     param (
         [parameter(Position = 0, Mandatory = $true)][string]$DomainName,
         [parameter(Position = 1, Mandatory = $false)][bool]$bShortName = $false
@@ -83,6 +84,7 @@ function Get-AdminUserName {
     }
 }
 function Get-ClearString {
+    [CmdletBinding()]
     param (
         $UserName,
         $SecureString
@@ -92,6 +94,7 @@ function Get-ClearString {
     return $UserName, $UnEncrypted
 }
 function Get-ComputerInfo {
+    [CmdletBinding()]
     param (
         [parameter(Position = 0, Mandatory = $true)]$MemberData,
         [parameter(Position = 1, Mandatory = $false)][string[]]$Properties = @(
@@ -219,6 +222,7 @@ function Get-ComputerInfo {
     }
 }
 function Get-HostDomain {
+    [CmdletBinding()]
     param (
         [parameter(Position = 0, Mandatory = $true)][string]$DomainName
     )
@@ -237,6 +241,7 @@ function Get-HostDomain {
     return $DomainName
 }
 function Get-OperatingSystem {
+    [CmdletBinding()]
     param (
         [parameter(Position = 0, Mandatory = $true)]$HostFQDN,
         [parameter(Position = 1, Mandatory = $true)]$AdminSecret
@@ -268,7 +273,7 @@ function Get-PortCheck {
     param (
         [Parameter(Position = 0, Mandatory = $true)][string]$HostFQDN,
         [Parameter(Position = 1, Mandatory = $true)][int]$PortNumber,
-        [Parameter(Position = 2, Mandatory = $true)][string]$OSName
+        [Parameter(Position = 2, Mandatory = $false)][string]$OSName = "2008+"
     )
     begin {
         $TempFile = ($env:TEMP + "\PortCheck.txt")
@@ -313,6 +318,7 @@ function Get-PortCheck {
     }
 }
 function Get-RegistryValue {
+    [CmdletBinding()]
     param (
         [parameter(Position = 0, Mandatory = $true)][string]$ComputerName,
         [parameter(Position = 1, Mandatory = $true)][string]$ComputerDomain
@@ -385,6 +391,7 @@ function Get-RemoteFileShare {
     return $TempFolder
 }
 function Get-RemoteLogs {
+    [CmdletBinding()]
     param (
         [Parameter(Position = 0, Mandatory = $true)][string]$HostFQDN,
         [Parameter(Position = 1, Mandatory = $true)][string]$ComputerDomain,
@@ -409,6 +416,7 @@ function Get-RemoteLogs {
     }
 }
 function Get-RemotePSVersion {
+    [CmdletBinding()]
     param (
         [parameter(Position = 0, Mandatory = $true)]$HostFQDN,
         [parameter(Position = 1, Mandatory = $true)]$AdminSecret
@@ -472,6 +480,7 @@ function Get-RightString {
     Return $Right    
 }
 function Get-ServicePrincipalNames {
+    [CmdletBinding()]
     param (
         [parameter(Position = 0, Mandatory = $true)]$ComputerName,
         [parameter(Position = 1, Mandatory = $true)]$ComputerDomain
@@ -492,6 +501,7 @@ function Get-ServicePrincipalNames {
     }
 }
 function Get-ServiceStatus {
+    [CmdletBinding()]
     param (
         [parameter(Position = 0, Mandatory = $true)][string[]]$SvcList,
         [parameter(Position = 1, Mandatory = $true)][string]$ShortName,
@@ -585,6 +595,7 @@ function Get-ServiceStatus {
     return $bServicesRunning, $ServiceList
 }
 function Get-SvcAcctName {
+    [CmdletBinding()]
     param (
         [parameter(Position = 0, Mandatory = $false)][string]$SvcAcctName = "svc_mecm_sysaccess",
         [parameter(Position = 1, Mandatory = $true)][string]$DomainName,
@@ -662,6 +673,7 @@ function Get-SvcAcctName {
     }
 }
 function Set-BatchService {
+    [CmdletBinding()]
     param (
         [parameter(Position = 0, Mandatory = $true)]$NetBIOS,
         [parameter(Position = 1, Mandatory = $true)]$ComputerDomain,
@@ -872,6 +884,7 @@ function Set-RemoteFileShare {
     }
 }
 function Set-RemoteServices {
+    [CmdletBinding()]
     param (
         [parameter(Position = 0, Mandatory = $true)]$HostName,
         [parameter(Position = 1, Mandatory = $true)]$DomainName,
@@ -924,7 +937,55 @@ function Set-RemoteServices {
         return 1
     }
 }
+function Start-TCPServer {
+    [CmdletBinding()]
+    param (
+        [Parameter(Mandatory = $false)]$Port = 10000
+    )
+    do {
+        # Create a TCP listender on Port $Port
+        $TcpObject = New-Object System.Net.Sockets.TcpListener($port)
+        # Start TCP listener
+        $ReceiveBytes = $TcpObject.Start()
+        # Accept TCP client connection
+        $ReceiveBytes = $TcpObject.AcceptTcpClient()
+        # Stop TCP Client listener
+        $TcpObject.Stop()
+        # Output information about remote client
+        $ReceiveBytes.Client.RemoteEndPoint
+    }  while (1)
+}
+function Start-UDPServer {
+    [CmdletBinding()]
+    param (
+        [Parameter(Mandatory = $false)]$Port = 10000
+    )
+    # Create a endpoint that represents the remote host from which the data was sent.
+    $RemoteComputer = New-Object System.Net.IPEndPoint([System.Net.IPAddress]::Any, 0)
+    Write-Host "Server is waiting for connections - $($UdpObject.Client.LocalEndPoint)"
+    Write-Host "Stop with CRTL + C"
+    # Loop de Loop
+    do {
+        # Create a UDP listender on Port $Port
+        $UdpObject = New-Object System.Net.Sockets.UdpClient($Port)
+        # Return the UDP datagram that was sent by the remote host
+        $ReceiveBytes = $UdpObject.Receive([ref]$RemoteComputer)
+        # Close UDP connection
+        $UdpObject.Close()
+        # Convert received UDP datagram from Bytes to String
+        $ASCIIEncoding = New-Object System.Text.ASCIIEncoding
+        [string]$ReturnString = $ASCIIEncoding.GetString($ReceiveBytes)
+        # Output information
+        [PSCustomObject]@{
+            LocalDateTime = $(Get-Date -UFormat "%Y-%m-%d %T")
+            SourceIP      = $RemoteComputer.address.ToString()
+            SourcePort    = $RemoteComputer.Port.ToString()
+            Payload       = $ReturnString
+        }
+    } while (1)
+}
 function Test-ADAuthentication {
+    [CmdletBinding()]
     param (
         $UserName,
         $SecureString
@@ -935,6 +996,7 @@ function Test-ADAuthentication {
     Remove-Variable -Name UnEncrypted -Force -ErrorAction SilentlyContinue
 }
 function Test-Date {
+    [CmdletBinding()]
     param (
         [ValidateScript({
             try {
@@ -947,7 +1009,40 @@ function Test-Date {
     )
     Return $Date.Replace("/","-")
 }
+function Test-NetConnectionUDP {
+    [CmdletBinding()]
+    param (
+        [Parameter(Position = 0, Mandatory = $true)][string]$ComputerName,
+        [Parameter(Position = 1, Mandatory = $true)][int32]$Port,
+        [Parameter(Position = 2, Mandatory = $false)][int32]$SourcePort = 50000
+    )
+    begin {
+        # Create a UDP client object
+        $UdpObject = New-Object system.Net.Sockets.Udpclient($SourcePort)
+        # Define connect parameters
+        $UdpObject.Connect($ComputerName, $Port)
+    }
+    process {
+        try {
+            # Convert current time string to byte array
+            $ASCIIEncoding = New-Object System.Text.ASCIIEncoding
+            $Bytes = $ASCIIEncoding.GetBytes("$(Get-Date -UFormat "%Y-%m-%d %T")")
+            # Send data to server
+            [void]$UdpObject.Send($Bytes, $Bytes.length)
+            return 0            
+        }
+        catch {
+            $Error.Clear()
+            return 1
+        }
+    }
+    end {
+        # Cleanup
+        $UdpObject.Close()
+    }
+}
 function Test-RemoteService {
+    [CmdletBinding()]
     param (
         [parameter(Position = 0, Mandatory = $true)]$HostName,
         [parameter(Position = 1, Mandatory = $true)]$DomainName,
@@ -983,6 +1078,9 @@ Export-ModuleMember -Function Get-SvcAcctName
 Export-ModuleMember -Function Set-LocalAdminAccount
 Export-ModuleMember -Function Set-RemoteFileShare
 Export-ModuleMember -Function Set-RemoteServices
+Export-ModuleMember -Function Start-TCPServer
+Export-ModuleMember -Function Start-UDPServer
 Export-ModuleMember -Function Test-ADAuthentication
 Export-ModuleMember -Function Test-Date
+Export-ModuleMember -Function Test-NetConnectionUDP
 Export-ModuleMember -Function Test-RemoteService
